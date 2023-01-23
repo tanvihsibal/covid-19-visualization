@@ -14,26 +14,137 @@ knit: (
  )
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+### Dataset
+
+We will be using COVID-19 data from OurWorldInData.org. Download the CSV from [here](https://covid.ourworldindata.org/data/owid-covid-data.csv).
+
+### R Packages
+#### Download the required packages.
+Note: Run these commands manually in the R console
+
+```
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("ggmap")
 ```
 
-## R Markdown
+#### Attach these packages
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ggmap)
+library(scales)
 ```
 
-## Including Plots
+### Capturing and cleaning the data
 
-You can also embed plots, for example:
+#### Capture the World Map
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+world_map <- map_data('world')
+head(world_map)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+#### Read COVID-19 CSV and understand its structure
+```{r}
+all_cases <- read.csv('owid-covid-data.csv', header=TRUE)
+names(all_cases)
+```
+
+#### Group the number of cases country-wise and make sure to filter out N/A values
+```{r}
+country_wise_cases <- all_cases %>% 
+  group_by(location) %>% 
+  summarise(count=sum(new_cases, na.rm=TRUE)) %>%
+  arrange(desc(count))
+head(country_wise_cases)
+```
+
+#### Filter out globally categorized data as we don't need it for our analysis
+```{r}
+country_wise_cases <- country_wise_cases[ !(country_wise_cases$location %in% list("World", "High income", "Europe", "Asia", "European Union", "Upper middle income", "North America", "Lower middle income", "South America", "Low income", "Africa", "International")), ]
+head(country_wise_cases)
+```
+
+#### Check for the differences in country names in the COVID data and the world map data (for eg "United States" vs "USA")
+```{r}
+setdiff(world_map$region, country_wise_cases$location)
+```
+
+#### Fix the anomallies
+```{r}
+country_wise_cases$location[country_wise_cases$location=='Congo'] = "Republic of Congo"
+country_wise_cases$location[country_wise_cases$location=="Cote d'Ivoire"] = "Ivory Coast"
+country_wise_cases$location[country_wise_cases$location=="Czechia"] = "Czech Republic"
+country_wise_cases$location[country_wise_cases$location=="Democratic Republic of Congo"] = "Democratic Republic of the Congo"
+country_wise_cases$location[country_wise_cases$location=="Eswatini"] = "Swaziland"
+country_wise_cases$location[country_wise_cases$location=="Faeroe Islands"] = "Faroe Islands"
+country_wise_cases$location[country_wise_cases$location=="Micronesia (country)"] = "Micronesia"
+country_wise_cases$location[country_wise_cases$location=="Pitcairn"] = "Pitcairn Islands"
+country_wise_cases$location[country_wise_cases$location=="Sint Maarten (Dutch part)"] = "Sint Maarten"
+country_wise_cases$location[country_wise_cases$location=="Timor"] = "Timor-Leste"
+country_wise_cases$location[country_wise_cases$location=="United Kingdom"] = "UK"
+country_wise_cases$location[country_wise_cases$location=="United States"] = "USA"
+country_wise_cases$location[country_wise_cases$location=="United States Virgin Islands"] = "Virgin Islands"
+
+temp_ct <- country_wise_cases$count[country_wise_cases$location=='Antigua and Barbuda']
+country_wise_cases$location[country_wise_cases$location=='Antigua and Barbuda'] = "Antigua"
+country_wise_cases[nrow(country_wise_cases) + 1,] = list("Barbuda", temp_ct)
+
+temp_ct <- country_wise_cases$count[country_wise_cases$location=='Bonaire Sint Eustatius and Saba']
+country_wise_cases$location[country_wise_cases$location=='Bonaire Sint Eustatius and Saba'] = "Bonaire"
+country_wise_cases[nrow(country_wise_cases) + 1,] = list("Sint Eustatius", temp_ct)
+country_wise_cases[nrow(country_wise_cases) + 1,] = list("Saba", temp_ct)
+
+temp_ct <- country_wise_cases$count[country_wise_cases$location=='Saint Kitts and Nevis']
+country_wise_cases$location[country_wise_cases$location=="Saint Kitts and Nevis"] = "Saint Kitts"
+country_wise_cases[nrow(country_wise_cases) + 1,] = list("Nevis", temp_ct)
+
+temp_ct <- country_wise_cases$count[country_wise_cases$location=='Saint Vincent and the Grenadines']
+country_wise_cases$location[country_wise_cases$location=="Saint Vincent and the Grenadines"] = "Saint Vincent"
+country_wise_cases[nrow(country_wise_cases) + 1,] = list("Grenadines", temp_ct)
+
+temp_ct <- country_wise_cases$count[country_wise_cases$location=='Trinidad and Tobago']
+country_wise_cases$location[country_wise_cases$location=="Trinidad and Tobago"] = "Trinidad"
+country_wise_cases[nrow(country_wise_cases) + 1,] = list("Tobago", temp_ct)
+```
+
+#### Rename the column "location" to "region" for inner join to work
+```{r}
+colnames(country_wise_cases) <- c("region", "count")
+names(country_wise_cases)
+```
+
+#### Inner join the data
+```{r}
+data <- inner_join(world_map, country_wise_cases, by="region")
+head(data)
+```
+
+#### Define a plain and aesthetics for plotting
+```{r}
+plain <- theme(
+  axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_rect(fill = "white"),
+  plot.title = element_text(hjust = 0.5)
+)
+aesthetics <- scale_fill_distiller(palette="Spectral", label=number_format(scale=1e-6, suffix = "M"))
+```
+
+#### Plot
+```{r}
+world_plot <- ggplot(data = data, mapping = aes(x = long, y = lat, group = group)) +
+  coord_fixed(1) +
+  geom_polygon(aes(fill = count)) +
+  ggtitle("COVID19 Cases Worldwide") +
+  plain +
+  aesthetics
+world_plot
+```
