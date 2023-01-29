@@ -16,17 +16,20 @@ knit: (
 
 ### Dataset
 
-We will be using COVID-19 data from OurWorldInData.org. Download the CSV from [here](https://covid.ourworldindata.org/data/owid-covid-data.csv).
+We will begin by using COVID-19 data from [Our World in Data](ourworldindata.org), and later, to that, we will add more data from [World Health Organization](who.int).
+
+1.  Download [this](https://covid.ourworldindata.org/data/owid-covid-data.csv) CSV from Our World in Data.
+2.  Download [this](https://covid19.who.int/WHO-COVID-19-global-data.csv) CSV from World Health Organization.
 
 ### R Packages
+
 #### Download the required packages.
+
 Note: Run these commands manually in the R console
 
-```
-install.packages("tidyverse")
-install.packages("ggplot2")
-install.packages("ggmap")
-```
+    install.packages("tidyverse")
+    install.packages("ggplot2")
+    install.packages("ggmap")
 
 #### Attach these packages
 
@@ -37,93 +40,104 @@ library(ggmap)
 library(scales)
 ```
 
-### Capturing and cleaning the data
+### Phase 1: Vizualing the first dataset
 
-#### Capture the World Map
+#### Capturing and cleaning the data
+
+##### Capture the World Map
 
 ```{r}
 world_map <- map_data('world')
 head(world_map)
 ```
 
+##### Read COVID-19 CSV from OurWorldInData and understand its structure
 
-#### Read COVID-19 CSV and understand its structure
 ```{r}
-all_cases <- read.csv('owid-covid-data.csv', header=TRUE)
-names(all_cases)
+all_owid_cases <- read.csv('owid-covid-data.csv', header=TRUE)
+names(all_owid_cases)
 ```
 
-#### Group the number of cases country-wise and make sure to filter out N/A values
+##### Group the number of cases country-wise and make sure to filter out N/A values
+
 ```{r}
-country_wise_cases <- all_cases %>% 
+country_wise_owid_cases <- all_owid_cases %>% 
   group_by(location) %>% 
   summarise(count=sum(new_cases, na.rm=TRUE)) %>%
   arrange(desc(count))
-head(country_wise_cases)
+head(country_wise_owid_cases)
 ```
 
-#### Filter out globally categorized data as we don't need it for our analysis
+##### Filter out globally categorized data as we don't need it for our analysis
+
 ```{r}
-country_wise_cases <- country_wise_cases[ !(country_wise_cases$location %in% list("World", "High income", "Europe", "Asia", "European Union", "Upper middle income", "North America", "Lower middle income", "South America", "Low income", "Africa", "International")), ]
-head(country_wise_cases)
+country_wise_owid_cases <- country_wise_owid_cases[ !(country_wise_owid_cases$location %in% list("World", "High income", "Europe", "Asia", "European Union", "Upper middle income", "North America", "Lower middle income", "South America", "Low income", "Africa", "International")), ]
+head(country_wise_owid_cases)
 ```
 
-#### Check for the differences in country names in the COVID data and the world map data (for eg "United States" vs "USA")
+##### Check for the differences in country names in the COVID data and the world map data (for eg "United States" vs "USA")
+
 ```{r}
-setdiff(world_map$region, country_wise_cases$location)
+setdiff(world_map$region, country_wise_owid_cases$location)
 ```
 
-#### Fix the anomallies
+##### Fix the anomallies
+
 ```{r}
-country_wise_cases$location[country_wise_cases$location=='Congo'] = "Republic of Congo"
-country_wise_cases$location[country_wise_cases$location=="Cote d'Ivoire"] = "Ivory Coast"
-country_wise_cases$location[country_wise_cases$location=="Czechia"] = "Czech Republic"
-country_wise_cases$location[country_wise_cases$location=="Democratic Republic of Congo"] = "Democratic Republic of the Congo"
-country_wise_cases$location[country_wise_cases$location=="Eswatini"] = "Swaziland"
-country_wise_cases$location[country_wise_cases$location=="Faeroe Islands"] = "Faroe Islands"
-country_wise_cases$location[country_wise_cases$location=="Micronesia (country)"] = "Micronesia"
-country_wise_cases$location[country_wise_cases$location=="Pitcairn"] = "Pitcairn Islands"
-country_wise_cases$location[country_wise_cases$location=="Sint Maarten (Dutch part)"] = "Sint Maarten"
-country_wise_cases$location[country_wise_cases$location=="Timor"] = "Timor-Leste"
-country_wise_cases$location[country_wise_cases$location=="United Kingdom"] = "UK"
-country_wise_cases$location[country_wise_cases$location=="United States"] = "USA"
-country_wise_cases$location[country_wise_cases$location=="United States Virgin Islands"] = "Virgin Islands"
+country_wise_owid_cases$location[country_wise_owid_cases$location=='Congo'] = "Republic of Congo"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Cote d'Ivoire"] = "Ivory Coast"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Czechia"] = "Czech Republic"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Democratic Republic of Congo"] = "Democratic Republic of the Congo"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Eswatini"] = "Swaziland"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Faeroe Islands"] = "Faroe Islands"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Micronesia (country)"] = "Micronesia"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Pitcairn"] = "Pitcairn Islands"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Sint Maarten (Dutch part)"] = "Sint Maarten"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Timor"] = "Timor-Leste"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="United Kingdom"] = "UK"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="United States"] = "USA"
+country_wise_owid_cases$location[country_wise_owid_cases$location=="United States Virgin Islands"] = "Virgin Islands"
 
-temp_ct <- country_wise_cases$count[country_wise_cases$location=='Antigua and Barbuda']
-country_wise_cases$location[country_wise_cases$location=='Antigua and Barbuda'] = "Antigua"
-country_wise_cases[nrow(country_wise_cases) + 1,] = list("Barbuda", temp_ct)
+temp_ct <- country_wise_owid_cases$count[country_wise_owid_cases$location=='Antigua and Barbuda']
+country_wise_owid_cases$location[country_wise_owid_cases$location=='Antigua and Barbuda'] = "Antigua"
+country_wise_owid_cases[nrow(country_wise_owid_cases) + 1,] = list("Barbuda", temp_ct)
 
-temp_ct <- country_wise_cases$count[country_wise_cases$location=='Bonaire Sint Eustatius and Saba']
-country_wise_cases$location[country_wise_cases$location=='Bonaire Sint Eustatius and Saba'] = "Bonaire"
-country_wise_cases[nrow(country_wise_cases) + 1,] = list("Sint Eustatius", temp_ct)
-country_wise_cases[nrow(country_wise_cases) + 1,] = list("Saba", temp_ct)
+temp_ct <- country_wise_owid_cases$count[country_wise_owid_cases$location=='Bonaire Sint Eustatius and Saba']
+country_wise_owid_cases$location[country_wise_owid_cases$location=='Bonaire Sint Eustatius and Saba'] = "Bonaire"
+country_wise_owid_cases[nrow(country_wise_owid_cases) + 1,] = list("Sint Eustatius", temp_ct)
+country_wise_owid_cases[nrow(country_wise_owid_cases) + 1,] = list("Saba", temp_ct)
 
-temp_ct <- country_wise_cases$count[country_wise_cases$location=='Saint Kitts and Nevis']
-country_wise_cases$location[country_wise_cases$location=="Saint Kitts and Nevis"] = "Saint Kitts"
-country_wise_cases[nrow(country_wise_cases) + 1,] = list("Nevis", temp_ct)
+temp_ct <- country_wise_owid_cases$count[country_wise_owid_cases$location=='Saint Kitts and Nevis']
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Saint Kitts and Nevis"] = "Saint Kitts"
+country_wise_owid_cases[nrow(country_wise_owid_cases) + 1,] = list("Nevis", temp_ct)
 
-temp_ct <- country_wise_cases$count[country_wise_cases$location=='Saint Vincent and the Grenadines']
-country_wise_cases$location[country_wise_cases$location=="Saint Vincent and the Grenadines"] = "Saint Vincent"
-country_wise_cases[nrow(country_wise_cases) + 1,] = list("Grenadines", temp_ct)
+temp_ct <- country_wise_owid_cases$count[country_wise_owid_cases$location=='Saint Vincent and the Grenadines']
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Saint Vincent and the Grenadines"] = "Saint Vincent"
+country_wise_owid_cases[nrow(country_wise_owid_cases) + 1,] = list("Grenadines", temp_ct)
 
-temp_ct <- country_wise_cases$count[country_wise_cases$location=='Trinidad and Tobago']
-country_wise_cases$location[country_wise_cases$location=="Trinidad and Tobago"] = "Trinidad"
-country_wise_cases[nrow(country_wise_cases) + 1,] = list("Tobago", temp_ct)
+temp_ct <- country_wise_owid_cases$count[country_wise_owid_cases$location=='Trinidad and Tobago']
+country_wise_owid_cases$location[country_wise_owid_cases$location=="Trinidad and Tobago"] = "Trinidad"
+country_wise_owid_cases[nrow(country_wise_owid_cases) + 1,] = list("Tobago", temp_ct)
 ```
 
-#### Rename the column "location" to "region" for inner join to work
+##### Rename the column "location" to "region" for inner join to work
+
 ```{r}
-colnames(country_wise_cases) <- c("region", "count")
-names(country_wise_cases)
+colnames(country_wise_owid_cases) <- c("region", "count")
+names(country_wise_owid_cases)
 ```
 
-#### Inner join the data
+##### Inner join the data
+
 ```{r}
-data <- inner_join(world_map, country_wise_cases, by="region")
-head(data)
+data_owid <- inner_join(world_map, country_wise_owid_cases, by="region")
+head(data_owid)
 ```
 
-#### Define a plain and aesthetics for plotting
+#### Plotting
+
+##### Define a plain and aesthetics for plotting
+
 ```{r}
 plain <- theme(
   axis.text = element_blank(),
@@ -138,13 +152,132 @@ plain <- theme(
 aesthetics <- scale_fill_distiller(palette="Spectral", label=number_format(scale=1e-6, suffix = "M"))
 ```
 
-#### Plot
+##### Plot
+
 ```{r}
-world_plot <- ggplot(data = data, mapping = aes(x = long, y = lat, group = group)) +
+world_plot_owid <- ggplot(data = data_owid, mapping = aes(x = long, y = lat, group = group)) +
   coord_fixed(1) +
   geom_polygon(aes(fill = count)) +
   ggtitle("COVID19 Cases Worldwide") +
   plain +
   aesthetics
-world_plot
+world_plot_owid
+```
+
+### Phase 2: Adding more data to Phase 1 dataset and vizualizing again
+
+#### Capturing and cleaning the data
+
+##### Read COVID-19 CSV from WorldHealthOrganization and understand its structure
+
+```{r}
+all_who_cases <- read.csv('WHO-COVID-19-global-data.csv', header=TRUE)
+names(all_who_cases)
+```
+
+##### Group the number of cases country-wise and make sure to filter out N/A values
+
+```{r}
+country_wise_who_cases <- all_who_cases %>% 
+  group_by(Country) %>% 
+  summarise(count=sum(New_cases, na.rm=TRUE)) %>%
+  arrange(desc(count))
+head(country_wise_who_cases)
+```
+
+##### Check for the differences in country names in the new data and the world map data (for eg "United States" vs "USA")
+
+```{r}
+setdiff(world_map$region, country_wise_who_cases$Country)
+```
+
+##### Fix the anomallies
+
+```{r}
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Bolivia (Plurinational State of)'] = "Bolivia"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Brunei Darussalam'] = "Brunei"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Cabo Verde'] = "Cape Verde"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Congo'] = "Republic of Congo"
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Côte d’Ivoire"] = "Ivory Coast"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Curaçao'] = "Curacao"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Czechia'] = "Czech Republic"
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Democratic People's Republic of Korea"] = "North Korea"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Eswatini'] = "Swaziland"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Falkland Islands (Malvinas)'] = "Falkland Islands"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Holy See'] = "Vatican"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Iran (Islamic Republic of)'] = "Iran"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Kosovo[1]'] = "Kosovo"
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Lao People's Democratic Republic"] = "Laos"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Micronesia (Federated States of)'] = "Micronesia"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Northern Mariana Islands (Commonwealth of the)'] = "Northern Mariana Islands"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='occupied Palestinian territory, including east Jerusalem'] = "Palestine"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Republic of Korea'] = "South Korea"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Republic of Moldova'] = "Moldova"
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Réunion"] = "Reunion"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Russian Federation'] = "Russia"
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Saint Barthélemy"] = "Saint Barthelemy"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Syrian Arab Republic'] = "Syria"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='The United Kingdom'] = "UK"
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Türkiye"] = "Turkey"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='United Republic of Tanzania'] = "Tanzania"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='United States of America'] = "USA"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='United States Virgin Islands'] = "Virgin Islands"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Venezuela (Bolivarian Republic of)'] = "Venezuela"
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Viet Nam'] = "Vietnam"
+
+temp_ct <- country_wise_who_cases$count[country_wise_who_cases$Country=='Antigua and Barbuda']
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Antigua and Barbuda'] = "Antigua"
+country_wise_who_cases[nrow(country_wise_who_cases) + 1,] = list("Barbuda", temp_ct)
+
+temp_ct <- country_wise_who_cases$count[country_wise_who_cases$Country=='Saint Helena, Ascension and Tristan da Cunha']
+country_wise_who_cases$Country[country_wise_who_cases$Country=='Saint Helena, Ascension and Tristan da Cunha'] = "Saint Helena"
+country_wise_who_cases[nrow(country_wise_who_cases) + 1,] = list("Ascension Island", temp_ct)
+
+temp_ct <- country_wise_who_cases$count[country_wise_who_cases$Country=='Saint Kitts and Nevis']
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Saint Kitts and Nevis"] = "Saint Kitts"
+country_wise_who_cases[nrow(country_wise_who_cases) + 1,] = list("Nevis", temp_ct)
+
+temp_ct <- country_wise_who_cases$count[country_wise_who_cases$Country=='Saint Vincent and the Grenadines']
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Saint Vincent and the Grenadines"] = "Saint Vincent"
+country_wise_who_cases[nrow(country_wise_who_cases) + 1,] = list("Grenadines", temp_ct)
+
+temp_ct <- country_wise_who_cases$count[country_wise_who_cases$Country=='Trinidad and Tobago']
+country_wise_who_cases$Country[country_wise_who_cases$Country=="Trinidad and Tobago"] = "Trinidad"
+country_wise_who_cases[nrow(country_wise_who_cases) + 1,] = list("Tobago", temp_ct)
+```
+
+##### Rename the column "Country" to "region" for inner join to work
+
+```{r}
+colnames(country_wise_who_cases) <- c("region", "count")
+names(country_wise_who_cases)
+```
+
+##### Sum the metrics in the two data sets
+
+```{r}
+country_wise_owid_who_cases <- merge(country_wise_owid_cases, country_wise_who_cases, by="region")
+country_wise_owid_who_cases$count <- country_wise_owid_who_cases$count.x + country_wise_owid_who_cases$count.y
+head(country_wise_who_cases)
+```
+
+##### Inner join the data
+
+```{r}
+data_owid_who <- inner_join(world_map, country_wise_owid_who_cases, by="region")
+head(data_owid_who)
+```
+
+#### Plotting
+
+##### Plot
+
+```{r}
+world_plot_owid_who <- ggplot(data = data_owid_who, mapping = aes(x = long, y = lat, group = group)) +
+  coord_fixed(1) +
+  geom_polygon(aes(fill = count)) +
+  ggtitle("COVID19 Cases Worldwide") +
+  plain +
+  aesthetics
+world_plot_owid_who
 ```
