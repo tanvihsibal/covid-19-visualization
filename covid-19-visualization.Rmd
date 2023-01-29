@@ -156,7 +156,7 @@ aesthetics <- scale_fill_distiller(palette="Spectral", label=number_format(scale
 
 ```{r}
 world_plot_owid <- ggplot(data = data_owid, mapping = aes(x = long, y = lat, group = group)) +
-  coord_fixed(1) +
+  coord_fixed(1.3) +
   geom_polygon(aes(fill = count)) +
   ggtitle("COVID19 Cases Worldwide") +
   plain +
@@ -258,7 +258,7 @@ names(country_wise_who_cases)
 ```{r}
 country_wise_owid_who_cases <- merge(country_wise_owid_cases, country_wise_who_cases, by="region")
 country_wise_owid_who_cases$count <- country_wise_owid_who_cases$count.x + country_wise_owid_who_cases$count.y
-head(country_wise_who_cases)
+head(country_wise_owid_who_cases)
 ```
 
 ##### Inner join the data
@@ -274,10 +274,25 @@ head(data_owid_who)
 
 ```{r}
 world_plot_owid_who <- ggplot(data = data_owid_who, mapping = aes(x = long, y = lat, group = group)) +
-  coord_fixed(1) +
+  coord_fixed(1.3) +
   geom_polygon(aes(fill = count)) +
   ggtitle("COVID19 Cases Worldwide") +
   plain +
   aesthetics
 world_plot_owid_who
 ```
+
+#### Analyzing the difference
+
+```{r}
+country_wise_owid_who_cases$diff <- ((country_wise_owid_who_cases$count.y - country_wise_owid_who_cases$count.x)*100)/country_wise_owid_who_cases$count.x
+country_wise_owid_who_cases[which(country_wise_owid_who_cases$diff <= -200 | country_wise_owid_who_cases$diff >= 200 & country_wise_owid_who_cases$diff != Inf), ]
+```
+
+Here are the two noticeable differences:
+
+1.  The scale in the legend of the second plot is doubled.\
+    This difference is expected as the WHO data we used was almost the same size as the OWID data. So, upon combining, all numbers are expected to double.
+
+2.  Numbers in China vary by a lot.\
+    This discrepancy is probably because of the fact that OWID data categorizes only Mainline China as "China", while it's not the case with WHO data. WHO data includes numbers from Taiwan, Hong Kong, and other areas too which are not categorized under the term "Mainland China.
